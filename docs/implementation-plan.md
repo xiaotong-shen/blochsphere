@@ -2,6 +2,10 @@
 
 Each phase is a reviewable increment on `main`. The base that lands with this plan is Phase 0 plus the parts of Phase 1 that the readout already needs.
 
+## End-to-end trunk
+
+Specified in [end-to-end.md](end-to-end.md), before the code that implements it. Two data-reuploading layers, a classical head `ŷ = a⟨Z⟩ + c`, and the Bloch sphere as a probe on `|ψ⟩` after each gate. The loss heatmap becomes a `(b₁, φ₁)` slice of that eight-parameter loss.
+
 ## Phase 0 — Simulator and Bloch tracker
 
 Status: done in this base.
