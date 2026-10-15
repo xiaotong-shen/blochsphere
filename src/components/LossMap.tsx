@@ -8,6 +8,8 @@ type Props = {
   grid: LossGrid;
   current: StepMark;
   history: StepMark[];
+  xLabel?: string;
+  yLabel?: string;
 };
 
 function colorAt(t: number): [number, number, number] {
@@ -18,7 +20,7 @@ function colorAt(t: number): [number, number, number] {
   return [r, g, b];
 }
 
-export function LossMap({ grid, current, history }: Props) {
+export function LossMap({ grid, current, history, xLabel = "θ", yLabel = "φ" }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -98,12 +100,12 @@ export function LossMap({ grid, current, history }: Props) {
       ctx.fillStyle = "#a39c90";
       ctx.font = "11px ui-sans-serif, system-ui, sans-serif";
       ctx.fillText("−π", padLeft, height - 8);
-      ctx.fillText("θ", padLeft + plotW / 2 - 4, height - 8);
+      ctx.fillText(xLabel, padLeft + plotW / 2 - 8, height - 8);
       ctx.fillText("π", padLeft + plotW - 8, height - 8);
       ctx.save();
       ctx.translate(12, padTop + plotH / 2);
       ctx.rotate(-Math.PI / 2);
-      ctx.fillText("φ", 0, 0);
+      ctx.fillText(yLabel, 0, 0);
       ctx.restore();
     };
 
@@ -111,7 +113,7 @@ export function LossMap({ grid, current, history }: Props) {
     const observer = new ResizeObserver(draw);
     observer.observe(parent);
     return () => observer.disconnect();
-  }, [current.phi, current.theta, grid, history]);
+  }, [current.phi, current.theta, grid, history, xLabel, yLabel]);
 
-  return <canvas ref={canvasRef} className="loss-canvas" aria-label="Loss over theta and phi" />;
+  return <canvas ref={canvasRef} className="loss-canvas" aria-label={`Loss over ${xLabel} and ${yLabel}`} />;
 }

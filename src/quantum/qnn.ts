@@ -18,7 +18,7 @@ export const INITIAL_PHI = 1.05;
 export type StageName = "encode" | "ry" | "rx";
 
 export type TrailSegment = {
-  name: StageName;
+  id: string;
   label: string;
   color: string;
   points: Bloch[];
@@ -162,7 +162,7 @@ export function traceCircuit(
       }
       psi = rotate(stage.name, stage.angle * fraction, psi);
     }
-    segments.push({ name: stage.name, label: meta.label, color: meta.color, points });
+    segments.push({ id: `${stage.name}-${index}`, label: meta.label, color: meta.color, points });
   });
 
   return { segments, state: psi };

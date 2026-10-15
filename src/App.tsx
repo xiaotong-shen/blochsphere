@@ -4,24 +4,24 @@ import { LossMap } from "./components/LossMap";
 import type { C } from "./quantum/complex";
 import {
   accuracy,
-  DATASET,
   descend,
-  expectationZ,
-  INITIAL_PHI,
-  INITIAL_THETA,
+  INITIAL_NET,
   loss,
-  lossGrid,
-  traceCircuit,
-  type TrailSegment,
-} from "./quantum/qnn";
+  NET_STAGE_COUNT,
+  predict,
+  sliceGrid,
+  traceNet,
+  type NetParams,
+} from "./quantum/net";
+import { DATASET, type TrailSegment } from "./quantum/qnn";
 import { blochOf, radius } from "./quantum/qubit";
 import { concurrence, reduceQubit0, reduceQubit1, traceEntangle } from "./quantum/two";
 import { wrapPi } from "./view/coords";
 
 type Mode = "qnn" | "entangle";
-type Step = { theta: number; phi: number; loss: number };
+type Step = { params: NetParams; loss: number };
 
-const LEARNING_RATE = 0.4;
+const LEARNING_RATE = 0.35;
 const TRAIN_STEPS = 28;
 
 function fmt(value: number, digits = 3): string {
@@ -38,30 +38,32 @@ function fmtAmp(amplitude: C): string {
 export function App() {
   const [mode, setMode] = useState<Mode>("qnn");
   const [x, setX] = useState(-0.75);
-  const [theta, setTheta] = useState(INITIAL_THETA);
-  const [phi, setPhi] = useState(INITIAL_PHI);
-  const [reveal, setReveal] = useState(3);
+  const [params, setParams] = useState<NetParams>(INITIAL_NET);
+  const [reveal, setReveal] = useState(NET_STAGE_COUNT);
   const [playing, setPlaying] = useState(false);
   const [running, setRunning] = useState(false);
   const [theta0, setTheta0] = useState(Math.PI / 2);
   const [theta1, setTheta1] = useState(0);
   const [gamma, setGamma] = useState(0);
   const [history, setHistory] = useState<Step[]>(() => [
-    { theta: INITIAL_THETA, phi: INITIAL_PHI, loss: loss(INITIAL_THETA, INITIAL_PHI) },
+    { params: INITIAL_NET, loss: loss(INITIAL_NET) },
   ]);
 
-  const grid = useMemo(() => lossGrid(46), []);
-  const traced = useMemo(() => traceCircuit(x, theta, phi, reveal), [phi, reveal, theta, x]);
+  const grid = useMemo(
+    () => sliceGrid(params, 28),
+    [params.a, params.b2, params.c, params.phi2, params.w1, params.w2],
+  );
+  const traced = useMemo(() => traceNet(x, params, reveal), [params, reveal, x]);
   const entangled = useMemo(() => traceEntangle(theta0, theta1, gamma), [gamma, theta0, theta1]);
 
   useEffect(() => {
     if (!playing) return;
     let frame = 0;
     const start = performance.now();
-    const duration = 2800;
+    const duration = 3600;
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / duration);
-      setReveal(t * 3);
+      setReveal(t * NET_STAGE_COUNT);
       if (t < 1) frame = requestAnimationFrame(tick);
       else setPlaying(false);
     };
@@ -69,18 +71,16 @@ export function App() {
     return () => cancelAnimationFrame(frame);
   }, [playing]);
 
-  const paramsRef = useRef({ theta, phi });
-  paramsRef.current = { theta, phi };
+  const paramsRef = useRef(params);
+  paramsRef.current = params;
 
   useEffect(() => {
     if (!running) return;
     let remaining = TRAIN_STEPS;
     const timer = window.setInterval(() => {
-      const current = paramsRef.current;
-      const next = descend(current.theta, current.phi, LEARNING_RATE);
-      paramsRef.current = { theta: next.theta, phi: next.phi };
-      setTheta(next.theta);
-      setPhi(next.phi);
+      const next = descend(paramsRef.current, LEARNING_RATE);
+      paramsRef.current = next.params;
+      setParams(next.params);
       setHistory((steps) => [...steps, next]);
       remaining -= 1;
       if (remaining <= 0) setRunning(false);
@@ -88,12 +88,13 @@ export function App() {
     return () => window.clearInterval(timer);
   }, [running]);
 
-  const currentLoss = loss(theta, phi);
-  const currentAccuracy = accuracy(theta, phi);
+  const currentLoss = loss(params);
+  const currentAccuracy = accuracy(params);
   const bloch = blochOf(traced.state);
   const p0 = traced.state[0].re ** 2 + traced.state[0].im ** 2;
   const p1 = traced.state[1].re ** 2 + traced.state[1].im ** 2;
-  const activeStage = Math.min(2, Math.floor(Math.max(0, reveal - 1e-6)));
+  const activeStage = Math.min(NET_STAGE_COUNT - 1, Math.floor(Math.max(0, reveal - 1e-6)));
+  const yHat = predict(x, params);
 
   const q0 = reduceQubit0(entangled.final);
   const q1 = reduceQubit1(entangled.final);
@@ -108,7 +109,7 @@ export function App() {
             id: "qubit",
             offset: [0, 0, 0],
             segments: traced.segments,
-            tip: traced.segments[2].points.at(-1) ?? bloch,
+            tip: traced.segments[NET_STAGE_COUNT - 1].points.at(-1) ?? bloch,
             caption: "inspected qubit",
           },
         ]
@@ -132,7 +133,7 @@ export function App() {
   function inspect(value: number) {
     setX(value);
     setPlaying(false);
-    setReveal(3);
+    setReveal(NET_STAGE_COUNT);
   }
 
   function play() {
@@ -143,20 +144,24 @@ export function App() {
 
   function stepOnce() {
     setPlaying(false);
-    setReveal(3);
-    const next = descend(theta, phi, LEARNING_RATE);
-    setTheta(next.theta);
-    setPhi(next.phi);
+    setReveal(NET_STAGE_COUNT);
+    const next = descend(params, LEARNING_RATE);
+    setParams(next.params);
     setHistory((steps) => [...steps, next]);
   }
 
   function resetTrain() {
     setRunning(false);
     setPlaying(false);
-    setReveal(3);
-    setTheta(INITIAL_THETA);
-    setPhi(INITIAL_PHI);
-    setHistory([{ theta: INITIAL_THETA, phi: INITIAL_PHI, loss: loss(INITIAL_THETA, INITIAL_PHI) }]);
+    setReveal(NET_STAGE_COUNT);
+    setParams(INITIAL_NET);
+    setHistory([{ params: INITIAL_NET, loss: loss(INITIAL_NET) }]);
+  }
+
+  function setParam(key: keyof NetParams, value: number) {
+    setParams((current) => ({ ...current, [key]: value }));
+    setPlaying(false);
+    setReveal(NET_STAGE_COUNT);
   }
 
   return (
@@ -168,7 +173,7 @@ export function App() {
         </div>
         <nav>
           <button type="button" className={mode === "qnn" ? "tab on" : "tab"} onClick={() => setMode("qnn")}>
-            Encoder and ansatz
+            Hybrid net
           </button>
           <button
             type="button"
@@ -206,51 +211,26 @@ export function App() {
                   >
                     <span>x {fmt(sample.x, 2)}</span>
                     <span className={sample.y > 0 ? "pos" : "neg"}>y {sample.y > 0 ? "+1" : "−1"}</span>
-                    <span>{fmt(expectationZ(sample.x, theta, phi), 2)}</span>
+                    <span>{fmt(predict(sample.x, params), 2)}</span>
                   </button>
                 ))}
               </div>
-              <p className="note">The sphere follows this input. Training still uses all six rows.</p>
+              <p className="note">The sphere follows this input. The loss uses all six rows.</p>
 
-              <p className="section-label">Ansatz</p>
-              <label>
-                θ = {fmt(wrapPi(theta), 2)}
-                <input
-                  type="range"
-                  min={-Math.PI}
-                  max={Math.PI}
-                  step={0.01}
-                  value={wrapPi(theta)}
-                  onChange={(event) => {
-                    setTheta(Number(event.target.value));
-                    setPlaying(false);
-                    setReveal(3);
-                  }}
-                />
-              </label>
-              <label>
-                φ = {fmt(wrapPi(phi), 2)}
-                <input
-                  type="range"
-                  min={-Math.PI}
-                  max={Math.PI}
-                  step={0.01}
-                  value={wrapPi(phi)}
-                  onChange={(event) => {
-                    setPhi(Number(event.target.value));
-                    setPlaying(false);
-                    setReveal(3);
-                  }}
-                />
-              </label>
+              <p className="section-label">Layer 1</p>
+              <AngleSlider label="w₁" value={params.w1} min={-2} max={2} onChange={(value) => setParam("w1", value)} />
+              <AngleSlider label="b₁" value={wrapPi(params.b1)} onChange={(value) => setParam("b1", value)} />
+              <AngleSlider label="φ₁" value={wrapPi(params.phi1)} onChange={(value) => setParam("phi1", value)} />
 
-              <div className="circuit" aria-label="Circuit">
-                <span>|0⟩</span>
-                <span className={activeStage === 0 && playing ? "gate hot" : "gate encode"}>Ry(x)</span>
-                <span className={activeStage === 1 && playing ? "gate hot" : "gate ry"}>Ry(θ)</span>
-                <span className={activeStage === 2 && playing ? "gate hot" : "gate rx"}>Rx(φ)</span>
-                <span>⟨Z⟩</span>
-              </div>
+              <p className="section-label">Layer 2</p>
+              <AngleSlider label="w₂" value={params.w2} min={-2} max={2} onChange={(value) => setParam("w2", value)} />
+              <AngleSlider label="b₂" value={wrapPi(params.b2)} onChange={(value) => setParam("b2", value)} />
+              <AngleSlider label="φ₂" value={wrapPi(params.phi2)} onChange={(value) => setParam("phi2", value)} />
+
+              <p className="section-label">Classical head</p>
+              <AngleSlider label="a" value={params.a} min={-2} max={2} onChange={(value) => setParam("a", value)} />
+              <AngleSlider label="c" value={params.c} min={-2} max={2} onChange={(value) => setParam("c", value)} />
+              <p className="note">a and c rescale ⟨Z⟩ after the measurement. They do not move the arrow.</p>
 
               <div className="button-row">
                 <button type="button" onClick={play} disabled={playing}>
@@ -350,7 +330,20 @@ export function App() {
         </aside>
 
         <section className="stage">
-          <BlochScene spheres={spheres} />
+          {mode === "qnn" ? (
+            <div className="circuit stage-circuit" aria-label="Circuit">
+              <span>|0⟩</span>
+              <span className={activeStage === 0 && playing ? "gate hot" : "gate encode"}>L1 Ry(w₁x+b₁)</span>
+              <span className={activeStage === 1 && playing ? "gate hot" : "gate ry"}>L1 Rx(φ₁)</span>
+              <span className={activeStage === 2 && playing ? "gate hot" : "gate encode"}>L2 Ry(w₂x+b₂)</span>
+              <span className={activeStage === 3 && playing ? "gate hot" : "gate rx"}>L2 Rx(φ₂)</span>
+              <span>⟨Z⟩</span>
+              <span className="gate head">a⟨Z⟩+c</span>
+            </div>
+          ) : null}
+          <div className="viewport">
+            <BlochScene spheres={spheres} />
+          </div>
         </section>
 
         <aside className="panel readout">
@@ -382,6 +375,10 @@ export function App() {
                 <div>
                   <dt>⟨Z⟩</dt>
                   <dd>{fmt(bloch.z)}</dd>
+                </div>
+                <div>
+                  <dt>ŷ = a⟨Z⟩+c</dt>
+                  <dd>{fmt(yHat)}</dd>
                 </div>
                 <div>
                   <dt>P(0)+P(1)</dt>
@@ -447,17 +444,23 @@ export function App() {
         {mode === "qnn" ? (
           <>
             <div className="landscape-copy">
-              <p className="section-label">Loss on the training set</p>
+              <p className="section-label">Loss slice at the other parameters</p>
               <p>
-                L(θ, φ) = mean (⟨Z⟩ − y)². The pale path is gradient descent with step size {LEARNING_RATE}. Low loss is
-                teal, high loss is sand. Dragging θ or φ moves the marker and does not record a step.
+                L = mean (a⟨Z⟩ + c − y)². This map varies only b₁ and φ₁. The path is the projection of each full
+                eight-parameter step. Step size {LEARNING_RATE}. Low loss is teal.
               </p>
               <p className="range">
                 loss range {fmt(grid.min, 2)} – {fmt(grid.max, 2)}
               </p>
             </div>
             <div className="map-frame">
-              <LossMap grid={grid} current={{ theta, phi }} history={history} />
+              <LossMap
+                grid={grid}
+                current={{ theta: params.b1, phi: params.phi1 }}
+                history={history.map((step) => ({ theta: step.params.b1, phi: step.params.phi1 }))}
+                xLabel="b₁"
+                yLabel="φ₁"
+              />
             </div>
           </>
         ) : (
@@ -475,10 +478,38 @@ export function App() {
   );
 }
 
+function AngleSlider({
+  label,
+  value,
+  onChange,
+  min = -Math.PI,
+  max = Math.PI,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+}) {
+  return (
+    <label>
+      {label} = {fmt(value, 2)}
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={0.01}
+        value={Math.max(min, Math.min(max, value))}
+        onChange={(event) => onChange(Number(event.target.value))}
+      />
+    </label>
+  );
+}
+
 function entangleSegments(id: string, local: SphereDraw["segments"][number]["points"], pull: typeof local): TrailSegment[] {
   return [
-    { name: "encode", label: `${id} local`, color: "#e2b15a", points: local },
-    { name: "rx", label: `${id} pull`, color: "#e07a5f", points: pull },
+    { id: `${id}-local`, label: `${id} local`, color: "#e2b15a", points: local },
+    { id: `${id}-pull`, label: `${id} pull`, color: "#e07a5f", points: pull },
   ];
 }
 

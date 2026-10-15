@@ -16,11 +16,13 @@ The dev server prints a local URL. `npm run build` typechecks and writes `dist/`
 
 ## Circuit
 
+The trainable model is a two-layer data-reuploading net with a classical head. [docs/end-to-end.md](docs/end-to-end.md) is the specification.
+
 ```
-|0⟩ —— Ry(x) —— Ry(θ) —— Rx(φ) —— ⟨Z⟩
+|0⟩ —— Ry(w₁x+b₁) —— Rx(φ₁) —— Ry(w₂x+b₂) —— Rx(φ₂) —— ⟨Z⟩ —— ŷ = a⟨Z⟩+c
 ```
 
-`x` is the inspected input. Training minimises the mean squared error of `⟨Z⟩` against six fixed labels. The sphere follows the inspected input. The loss map uses the whole batch. Gradients use the parameter-shift rule.
+The Bloch sphere is a probe on the state after each of the four gates. `a` and `c` sit after the measurement, so they change `ŷ` and the loss without moving the arrow. Training steps all eight parameters together. The heatmap is the slice of that loss over `(b₁, φ₁)`.
 
 The entanglement circuit is `|00⟩`, local `Ry` on each qubit, then `CRy(γ)` controlled by qubit 0. For a pure two-qubit state the reduced radius is `√(1 − C²)`.
 

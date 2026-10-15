@@ -129,7 +129,7 @@ function Trail({ segments }: { segments: TrailSegment[] }) {
     <>
       {segments.map((segment) =>
         segment.points.length < 2 ? null : (
-          <TrailLine key={segment.name} points={segment.points} color={segment.color} />
+          <TrailLine key={segment.id} points={segment.points} color={segment.color} />
         ),
       )}
     </>

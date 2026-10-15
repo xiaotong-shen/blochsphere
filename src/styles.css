@@ -112,6 +112,23 @@ nav {
   border: 1px solid var(--line);
   border-radius: 12px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.viewport {
+  flex: 1;
+  min-height: 0;
+}
+
+.stage-circuit {
+  margin: 0;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.gate.head {
+  color: var(--text);
 }
 
 .stage canvas {
@@ -301,7 +318,7 @@ dd {
   }
 
   .stage {
-    height: 520px;
+    height: 560px;
   }
 
   .map-frame {
