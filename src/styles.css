@@ -1,0 +1,310 @@
+:root {
+  color-scheme: dark;
+  --bg: #101218;
+  --panel: #181b22;
+  --line: #313744;
+  --text: #ebe6dc;
+  --muted: #a39c90;
+  --accent: #e2b15a;
+  --encode: #7eb6ff;
+  --ry: #e2b15a;
+  --rx: #8fbf9f;
+  --pos: #8fbf9f;
+  --neg: #e07a5f;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+.app {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) 220px;
+  gap: 12px;
+  padding: 14px 16px 16px;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 16px;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 560;
+  letter-spacing: -0.03em;
+}
+
+.eyebrow {
+  margin: 0 0 2px;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+nav {
+  display: flex;
+  gap: 8px;
+}
+
+.tab,
+.button-row button,
+.point {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.tab.on,
+.point.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.workspace {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 290px minmax(0, 1fr) 280px;
+  gap: 12px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  min-height: 0;
+}
+
+.controls,
+.readout {
+  padding: 14px;
+  overflow: auto;
+}
+
+.stage {
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.stage canvas {
+  display: block;
+}
+
+.section-label {
+  margin: 14px 0 8px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.controls .section-label:first-child,
+.readout .section-label:first-child,
+.landscape-copy .section-label {
+  margin-top: 0;
+}
+
+label {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.point-list {
+  display: grid;
+  gap: 6px;
+}
+
+.point {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  border-radius: 8px;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+.pos {
+  color: var(--pos);
+}
+
+.neg {
+  color: var(--neg);
+}
+
+.note,
+.landscape-copy p,
+.range {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.circuit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 8px 0 12px;
+}
+
+.circuit span {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 7px;
+  font-size: 13px;
+}
+
+.gate.encode {
+  color: var(--encode);
+}
+
+.gate.ry {
+  color: var(--ry);
+}
+
+.gate.rx {
+  color: var(--rx);
+}
+
+.gate.hot {
+  color: var(--bg);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.amplitude {
+  font-variant-numeric: tabular-nums;
+  line-height: 1.45;
+}
+
+dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 4px;
+}
+
+dt {
+  color: var(--muted);
+}
+
+dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.spark {
+  width: 100%;
+  height: 48px;
+  margin-top: 12px;
+}
+
+.spark polyline {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.basis {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+}
+
+.basis li {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  padding: 4px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.landscape {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.landscape-copy.wide {
+  grid-column: 1 / -1;
+}
+
+.map-frame {
+  min-width: 0;
+  min-height: 0;
+}
+
+.loss-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+@media (max-width: 980px) {
+  .app {
+    height: auto;
+    grid-template-rows: auto auto auto;
+  }
+
+  .workspace,
+  .landscape {
+    grid-template-columns: 1fr;
+  }
+
+  .stage {
+    height: 520px;
+  }
+
+  .map-frame {
+    height: 220px;
+  }
+}
